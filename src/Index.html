@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <style>
+    :root {
+      --bg: #f6f7f9; --surface: #ffffff; --text: #1d2330; --muted: #667085; --border: #e3e6ea;
+      --accent: #1a73e8; --accent-text: #ffffff; --ok: #188038; --warn: #b06000; --bad: #c5221f;
+      --ok-bg: #e6f4ea; --warn-bg: #fef7e0; --bad-bg: #fce8e6;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #121418; --surface: #1b1e24; --text: #e6e8eb; --muted: #9aa3ae; --border: #2c3038;
+        --accent: #8ab4f8; --accent-text: #0b1a33; --ok: #81c995; --warn: #fdd663; --bad: #f28b82;
+        --ok-bg: #1e3326; --warn-bg: #3a3218; --bad-bg: #3c1f1e;
+      }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    .hidden { display: none !important; }
+    .wrap { max-width: 960px; margin: 0 auto; padding: 16px; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; background: var(--surface); border-bottom: 1px solid var(--border); }
+    header h1 { font-size: 17px; margin: 0; }
+    header .who { color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+    .card h2 { font-size: 15px; margin: 0 0 12px; }
+    .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+    .tabs button { background: none; border: none; border-bottom: 2px solid transparent; padding: 10px 14px; color: var(--muted); cursor: pointer; font: inherit; }
+    .tabs button.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+    input, select { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font: inherit; }
+    input[type=checkbox] { width: auto; }
+    .field { margin-bottom: 12px; }
+    .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; font: inherit; }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+    .btn.danger { color: var(--bad); }
+    .btn.small { padding: 4px 10px; font-size: 13px; }
+    .btn:disabled { opacity: .55; cursor: wait; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    th { font-size: 12px; color: var(--muted); font-weight: 600; }
+    td a { color: var(--accent); text-decoration: none; }
+    .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; }
+    .pill.ok { background: var(--ok-bg); color: var(--ok); }
+    .pill.warn { background: var(--warn-bg); color: var(--warn); }
+    .pill.bad { background: var(--bad-bg); color: var(--bad); }
+    .msg { padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; }
+    .msg.error { background: var(--bad-bg); color: var(--bad); }
+    .msg.info { background: var(--ok-bg); color: var(--ok); }
+    .muted { color: var(--muted); }
+    .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .login { max-width: 340px; margin: 12vh auto 0; padding: 0 16px; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin: 12px 0; }
+    .stat { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+    .stat b { display: block; font-size: 20px; font-variant-numeric: tabular-nums; }
+    .stat span { font-size: 12px; color: var(--muted); }
+    .folder-mode { display: flex; gap: 12px; margin-bottom: 6px; font-size: 13px; }
+    .folder-mode label { display: inline-flex; align-items: center; gap: 4px; margin: 0; color: var(--text); font-size: 13px; }
+  </style>
+</head>
+<body>
+
+  <!-- Login -->
+  <div id="loginView" class="login hidden">
+    <div class="card">
+      <h2>DriveDrop</h2>
+      <div id="loginError" class="msg error hidden"></div>
+      <form id="loginForm">
+        <div class="field">
+          <label for="username">Username</label>
+          <input id="username" autocomplete="username" required>
+        </div>
+        <div class="field">
+          <label for="pin">PIN</label>
+          <input id="pin" type="password" inputmode="numeric" autocomplete="current-password" required>
+        </div>
+        <button class="btn primary" type="submit" id="loginBtn">Log in</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- App -->
+  <div id="appView" class="hidden">
+    <header>
+      <h1>DriveDrop</h1>
+      <div class="actions">
+        <span class="who" id="account"></span>
+        <button class="btn small" id="logoutBtn">Log out</button>
+      </div>
+    </header>
+
+    <div class="wrap">
+      <div id="flash" class="msg hidden"></div>
+
+      <nav class="tabs">
+        <button data-tab="rules" class="active">Rules</button>
+        <button data-tab="settings">Settings</button>
+        <button data-tab="status">Status</button>
+      </nav>
+
+      <!-- Rules -->
+      <section id="tab-rules">
+        <div class="card">
+          <h2>Sender &rarr; folder rules</h2>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Sender</th><th>Drive folder</th><th>Processor</th><th>Status</th><th></th></tr></thead>
+              <tbody id="rulesBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 id="ruleFormTitle">Add rule</h2>
+          <form id="ruleForm">
+            <input type="hidden" id="ruleId">
+            <div class="row">
+              <div class="field">
+                <label for="ruleSender">Sender</label>
+                <input id="ruleSender" placeholder="supplier@example.com or *@example.com" required>
+              </div>
+              <div class="field">
+                <label for="ruleProcessor">Processor</label>
+                <select id="ruleProcessor"></select>
+              </div>
+            </div>
+            <div class="field">
+              <div class="folder-mode">
+                <label><input type="radio" name="folderMode" value="existing" checked> Existing folder</label>
+                <label><input type="radio" name="folderMode" value="new"> Create new folder</label>
+              </div>
+              <input id="ruleFolder" placeholder="Paste a Drive folder link or ID" required>
+              <div class="hint" id="folderHint">Open the folder in Drive and copy the URL from the address bar.</div>
+            </div>
+            <div class="field">
+              <label style="display:inline-flex;gap:6px;align-items:center;color:var(--text)">
+                <input type="checkbox" id="ruleEnabled" checked> Enabled
+              </label>
+            </div>
+            <div class="actions">
+              <button class="btn primary" type="submit">Save rule</button>
+              <button class="btn hidden" type="button" id="cancelEdit">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- Settings -->
+      <section id="tab-settings" class="hidden">
+        <div class="card">
+          <h2>Settings</h2>
+          <form id="settingsForm">
+            <div class="field">
+              <label for="defaultFolder">Default folder (optional)</label>
+              <input id="defaultFolder" placeholder="Leave blank to ignore senders without a rule">
+              <div class="hint" id="defaultFolderHint">If set, attachments from <b>any</b> sender without a rule go here.</div>
+            </div>
+            <div class="row">
+              <div class="field">
+                <label for="maxAttempts">Max attempts before marking Failed</label>
+                <input id="maxAttempts" type="number" min="1" max="20" required>
+              </div>
+              <div class="field">
+                <label for="lookbackDays">Look back (days)</label>
+                <input id="lookbackDays" type="number" min="1" max="60" required>
+              </div>
+            </div>
+            <button class="btn primary" type="submit">Save settings</button>
+          </form>
+        </div>
+      </section>
+
+      <!-- Status -->
+      <section id="tab-status" class="hidden">
+        <div class="card">
+          <h2>Status</h2>
+          <div class="actions">
+            <span>Schedule (every 10 min): <span id="triggerPill"></span></span>
+            <button class="btn small hidden" id="installTriggerBtn">Install schedule</button>
+            <span style="margin-left:12px">Logging: <span id="logPills"></span></span>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Last run</h2>
+          <div id="lastRun" class="muted">No runs yet.</div>
+          <div class="actions" style="margin-top:12px">
+            <button class="btn primary" id="runNowBtn">Run now</button>
+            <button class="btn" id="retryFailedBtn">Retry failed</button>
+          </div>
+          <div class="hint">"Retry failed" removes the DriveDrop/Failed label so those emails are tried again on the next run.</div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+<script>
+  const TOKEN_KEY = 'driveDropToken';
+  let state = null;
+
+  const $ = id => document.getElementById(id);
+  const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  function getToken() { try { return sessionStorage.getItem(TOKEN_KEY); } catch (e) { return window._token; } }
+  function setToken(t) { try { t ? sessionStorage.setItem(TOKEN_KEY, t) : sessionStorage.removeItem(TOKEN_KEY); } catch (e) { window._token = t; } }
+
+  function call(fn, ...args) {
+    return new Promise((resolve, reject) => {
+      google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[fn](...args);
+    });
+  }
+
+  async function api(action, payload) {
+    const res = await call('api', getToken(), action, payload || null);
+    if (!res.ok) {
+      if (res.code === 'AUTH') showLogin(res.error);
+      throw new Error(res.error);
+    }
+    return res.data;
+  }
+
+  async function busy(button, fn) {
+    const label = button.textContent;
+    button.disabled = true;
+    button.textContent = 'Working…';
+    try { return await fn(); }
+    catch (e) { flash(e.message, true); }
+    finally { button.disabled = false; button.textContent = label; }
+  }
+
+  function flash(text, isError) {
+    const el = $('flash');
+    el.textContent = text;
+    el.className = 'msg ' + (isError ? 'error' : 'info');
+    clearTimeout(flash.timer);
+    flash.timer = setTimeout(() => el.classList.add('hidden'), isError ? 8000 : 4000);
+  }
+
+  // ---- Views ----
+  function showLogin(error) {
+    setToken(null);
+    $('appView').classList.add('hidden');
+    $('loginView').classList.remove('hidden');
+    $('pin').value = '';
+    const err = $('loginError');
+    err.textContent = error || '';
+    err.classList.toggle('hidden', !error);
+  }
+
+  function showApp(newState) {
+    $('loginView').classList.add('hidden');
+    $('appView').classList.remove('hidden');
+    render(newState);
+  }
+
+  function render(newState) {
+    state = newState;
+    const { config, processors, status } = state;
+    $('account').textContent = status.account;
+
+    $('ruleProcessor').innerHTML = processors.map(p => `<option value="${esc(p.key)}">${esc(p.name)}</option>`).join('');
+    const processorName = key => (processors.find(p => p.key === key) || { name: key }).name;
+
+    $('rulesBody').innerHTML = config.rules.length
+      ? config.rules.map(r => `
+          <tr>
+            <td>${esc(r.sender)}</td>
+            <td><a href="https://drive.google.com/drive/folders/${esc(r.folderId)}" target="_blank">${esc(r.folderName || r.folderId)}</a></td>
+            <td>${esc(processorName(r.processor))}</td>
+            <td><span class="pill ${r.enabled ? 'ok' : 'warn'}">${r.enabled ? 'Enabled' : 'Disabled'}</span></td>
+            <td><div class="actions" style="justify-content:flex-end;flex-wrap:nowrap">
+              <button class="btn small" data-edit="${esc(r.id)}">Edit</button>
+              <button class="btn small danger" data-delete="${esc(r.id)}">Delete</button>
+            </div></td>
+          </tr>`).join('')
+      : '<tr><td colspan="5" class="muted">No rules yet. Add one below.</td></tr>';
+
+    $('defaultFolder').value = config.defaultFolderId || '';
+    $('defaultFolderHint').innerHTML = config.defaultFolderId
+      ? `Currently: <b>${esc(config.defaultFolderName)}</b>. Attachments from <b>any</b> sender without a rule go here.`
+      : 'If set, attachments from <b>any</b> sender without a rule go here.';
+    $('maxAttempts').value = config.maxAttempts;
+    $('lookbackDays').value = config.lookbackDays;
+
+    $('triggerPill').innerHTML = status.triggerInstalled
+      ? '<span class="pill ok">Installed</span>' : '<span class="pill bad">Not installed</span>';
+    $('installTriggerBtn').classList.toggle('hidden', status.triggerInstalled);
+    $('logPills').innerHTML = status.logSinks.length
+      ? status.logSinks.map(s => s.configured
+          ? `<span class="pill ok">${esc(s.name)}</span>`
+          : `<span class="pill warn" title="${s.unknown ? 'Unknown sink' : 'Secrets not set'}">${esc(s.name)}: ${s.unknown ? 'unknown' : 'not configured'}</span>`).join(' ')
+      : '<span class="pill warn">None (execution log only)</span>';
+
+    renderLastRun(status.lastRun);
+  }
+
+  function renderLastRun(run) {
+    if (!run) { $('lastRun').innerHTML = 'No runs yet.'; $('lastRun').className = 'muted'; return; }
+    $('lastRun').className = '';
+    const when = new Date(run.startedAt).toLocaleString();
+    const flags = [
+      run.error ? `<span class="pill bad">Error: ${esc(run.error)}</span>` : '',
+      run.timedOut ? '<span class="pill warn">Stopped early (time limit), continues next run</span>' : '',
+      run.note ? `<span class="pill warn">${esc(run.note)}</span>` : '',
+    ].join(' ');
+    $('lastRun').innerHTML = `
+      <div class="muted">${esc(when)} &middot; via ${esc(run.source)} &middot; ${(run.durationMs / 1000).toFixed(1)}s</div>
+      <div class="stats">
+        <div class="stat"><b>${run.messages}</b><span>Emails handled</span></div>
+        <div class="stat"><b>${run.filesSaved}</b><span>Files saved</span></div>
+        <div class="stat"><b>${run.failures}</b><span>Failures (will retry)</span></div>
+        <div class="stat"><b>${run.gaveUp}</b><span>Marked Failed</span></div>
+      </div>
+      <div>${flags}</div>`;
+  }
+
+  function resetRuleForm() {
+    $('ruleForm').reset();
+    $('ruleId').value = '';
+    $('ruleFormTitle').textContent = 'Add rule';
+    $('cancelEdit').classList.add('hidden');
+    setFolderMode('existing');
+  }
+
+  function setFolderMode(mode) {
+    document.querySelector(`input[name=folderMode][value=${mode}]`).checked = true;
+    $('ruleFolder').placeholder = mode === 'new' ? 'New folder name (created in My Drive)' : 'Paste a Drive folder link or ID';
+    $('folderHint').textContent = mode === 'new'
+      ? 'The folder is created in the root of My Drive when you save.'
+      : 'Open the folder in Drive and copy the URL from the address bar.';
+  }
+
+  // ---- Events ----
+  $('loginForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const btn = $('loginBtn');
+    btn.disabled = true;
+    try {
+      const res = await call('login', $('username').value, $('pin').value);
+      if (!res.ok) return showLogin(res.error);
+      setToken(res.data.token);
+      $('pin').value = '';
+      showApp(await api('getState'));
+    } catch (err) {
+      showLogin(err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  $('logoutBtn').addEventListener('click', async () => {
+    try { await api('logout'); } catch (e) { /* session already gone */ }
+    showLogin();
+  });
+
+  document.querySelectorAll('.tabs button').forEach(btn => btn.addEventListener('click', () => {
+    document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('active', b === btn));
+    ['rules', 'settings', 'status'].forEach(t => $('tab-' + t).classList.toggle('hidden', t !== btn.dataset.tab));
+  }));
+
+  document.querySelectorAll('input[name=folderMode]').forEach(r => r.addEventListener('change', () => setFolderMode(r.value)));
+
+  $('rulesBody').addEventListener('click', async e => {
+    const editId = e.target.dataset.edit;
+    const deleteId = e.target.dataset.delete;
+    if (editId) {
+      const rule = state.config.rules.find(r => r.id === editId);
+      setFolderMode('existing');
+      $('ruleId').value = rule.id;
+      $('ruleSender').value = rule.sender;
+      $('ruleFolder').value = rule.folderId;
+      $('ruleProcessor').value = rule.processor || 'none';
+      $('ruleEnabled').checked = rule.enabled;
+      $('ruleFormTitle').textContent = 'Edit rule';
+      $('cancelEdit').classList.remove('hidden');
+      $('ruleForm').scrollIntoView({ behavior: 'smooth' });
+    }
+    if (deleteId) {
+      const rule = state.config.rules.find(r => r.id === deleteId);
+      if (!confirm(`Delete the rule for ${rule.sender}? Files already in Drive are not touched.`)) return;
+      await busy(e.target, async () => {
+        render(await api('deleteRule', { id: deleteId }));
+        flash('Rule deleted');
+      });
+    }
+  });
+
+  $('cancelEdit').addEventListener('click', resetRuleForm);
+
+  $('ruleForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    await busy(e.submitter || $('ruleForm').querySelector('[type=submit]'), async () => {
+      let folder = $('ruleFolder').value;
+      if (document.querySelector('input[name=folderMode]:checked').value === 'new') {
+        folder = (await api('createFolder', { name: folder })).id;
+      }
+      render(await api('saveRule', {
+        id: $('ruleId').value || null,
+        sender: $('ruleSender').value,
+        folder: folder,
+        processor: $('ruleProcessor').value,
+        enabled: $('ruleEnabled').checked,
+      }));
+      resetRuleForm();
+      flash('Rule saved');
+    });
+  });
+
+  $('settingsForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    await busy(e.submitter || $('settingsForm').querySelector('[type=submit]'), async () => {
+      render(await api('saveSettings', {
+        defaultFolder: $('defaultFolder').value,
+        maxAttempts: $('maxAttempts').value,
+        lookbackDays: $('lookbackDays').value,
+      }));
+      flash('Settings saved');
+    });
+  });
+
+  $('runNowBtn').addEventListener('click', e => busy(e.currentTarget, async () => {
+    const res = await api('runNow');
+    render(res.state);
+    if (res.summary.skipped) flash(res.summary.reason, true);
+    else flash(`Run finished: ${res.summary.filesSaved} file(s) saved, ${res.summary.failures} failure(s)`);
+  }));
+
+  $('retryFailedBtn').addEventListener('click', e => busy(e.currentTarget, async () => {
+    const res = await api('retryFailed');
+    render(res.state);
+    flash(`${res.count} email(s) will be retried on the next run`);
+  }));
+
+  $('installTriggerBtn').addEventListener('click', e => busy(e.currentTarget, async () => {
+    render(await api('installTrigger'));
+    flash('Schedule installed');
+  }));
+
+  // ---- Boot ----
+  (async () => {
+    if (!getToken()) return showLogin();
+    try { showApp(await api('getState')); }
+    catch (e) { showLogin(); }
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,45 @@
+name: Deploy to Apps Script
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: apps-script-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Pinned: clasp 3 changed its credentials file format and command names.
+      - name: Install clasp
+        run: npm install -g @google/clasp@2.4.2
+
+      - name: Write clasp credentials
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+          SCRIPT_ID: ${{ secrets.SCRIPT_ID }}
+        run: |
+          printf '%s' "$CLASPRC_JSON" > ~/.clasprc.json
+          printf '{"scriptId":"%s","rootDir":"src"}' "$SCRIPT_ID" > .clasp.json
+
+      # Updates the code the 10-minute trigger runs (triggers always use the latest pushed code).
+      - name: Push code
+        run: clasp push --force
+
+      # Creates a new version and points the existing web app deployment at it, so the /exec URL stays the same.
+      - name: Update web app deployment
+        env:
+          DEPLOYMENT_ID: ${{ secrets.DEPLOYMENT_ID }}
+        run: clasp deploy --deploymentId "$DEPLOYMENT_ID" --description "${GITHUB_SHA::7} $(date -u +%Y-%m-%d)"
